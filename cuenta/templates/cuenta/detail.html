@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Tu cuenta{% endblock %}
+
+{% block content %}
+
+  <!-- Page Content -->
+  <div class="container">
+
+    <!-- Call to Action Well -->
+    <!-- Heading Row -->
+    <div class="row align-items-center my-5">
+      <div class="col-lg-7">
+        <img class="img-fluid rounded mb-4 mb-lg-0" src="http://placehold.it/900x400" alt="">
+      </div>
+      <!-- /.col-lg-8 -->
+      <div class="col-lg-5">
+        <h1 class="font-weight-light">{{ cuenta.balance }} {{ cuenta.currency }}</h1>
+        <p>{% if not cuenta.viban %} Activa tu numero personal, should be on click... link?
+          <a href="{% url 'ibanize' cuenta.id %}" class="btn btn-primary btn-sm">AQUI</a>
+            {% else %} Tu numero de cuenta: {{ cuenta.viban }}
+           {% endif %}
+        </p>
+        <p>
+            Ultima actualizacion: {{ cuenta.updated }} Should include deposits, etc.
+        </p>
+      {% if form %}
+      <form action="deposit/" method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <input type="submit" value="Deposit">
+      </form>
+      <br>
+        Or register a new card in this currency <a href="{% url 'cardregistration' cuenta.id %}" class="btn btn-primary btn-sm">ReGiStEr</a>
+      {% else %}
+        Please register a card to start <a href="{% url 'cardregistration' cuenta.id %}" class="btn btn-primary btn-sm">ReGiStEr</a>
+      {% endif %}
+      </div>
+
+      <!-- /.col-md-4 -->
+    </div>
+    <!-- /.row -->
+
+   <!-- Content Row -->
+    <div class="row">
+      <div class="col-md-4 mb-5">
+        <div class="card h-100">
+          <div class="card-body">
+            <h2 class="card-title">Saving Goals</h2>
+            {% if goals|length <= 4 %}
+            <p class="card-text">
+              <a href="{% url 'goalsavecreate' cuenta.id %}" class="btn btn-primary btn-sm">Create</a>
+              add 4 goals limit
+            </p>
+            {% endif %}
+          </div>
+          <div class="card-footer">
+            {% if goals %}
+              {% for goal in goals %}
+                <a href="{% url 'goalsaveview' cuenta.id goal.id %}">{{ goal.title }}</a> - {{ goal.achieved }} {{ goal.account.currency }} so far<br>
+              {% endfor %}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <!-- /.col-md-4 -->
+      <div class="col-md-4 mb-5">
+        <div class="card h-100">
+          <div class="card-body">
+            <h2 class="card-title">Link Payments</h2>
+            <p class="card-text">
+              <a href="{% url 'linkcreate' cuenta.id %}" class="btn btn-primary btn-sm">Create</a>
+              <a href="{% url 'linklist' cuenta.id %}" class="btn btn-primary btn-sm">List</a>
+            </p>
+          </div>
+          <div class="card-footer">
+            {% for link in links %}
+              {{ link }} - {{ link.status }}<br>
+            {% empty %}
+              No links created yet.
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <!-- /.col-md-4 -->
+      <div class="col-md-4 mb-5">
+        <div class="card h-100">
+          <div class="card-body">
+            <h2 class="card-title">Crowdfunds or topup without registering a card</h2>
+            <p class="card-text">
+              <a href="#" class="btn btn-primary btn-sm">topup</a>
+            </p>
+          </div>
+          <div class="card-footer">
+            Lorem ipsum crappypantis etc
+          </div>
+        </div>
+      </div>
+      <!-- /.col-md-4 -->
+
+    </div>
+    <!-- /.row -->
+
+    <!-- Copy call to Action Well for transactions -->
+    <div class="card my-5 py-4">
+      <div class="card-body">
+          <p class="m-0"><h2>Transactions</h2>
+          Here goes a list of all the transactions this account has seen. First as objects, then as API input...
+          <table>
+            {% for t in transactions %}
+                <tr>
+                  <td>{{ t.created }}</td><td>{{ t.description }}</td><td>{{ t.amount }}</td><td>{{ t.type }}</td>
+                </tr>
+            {% empty %}
+              No transactions done yet.
+            {% endfor %}
+          </table>
+        </p>
+      </div>
+    </div>
+
+  </div>
+  <!-- /.container -->
+
+{% endblock %}
+{% block extra_content %}{% endblock %}

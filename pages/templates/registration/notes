@@ -1,0 +1,1 @@
+this dir has basic templates that are used by the cjango auth views. These were superceded by teh allauth package, that uses the ones in the account dir

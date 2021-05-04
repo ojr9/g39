@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Update your goal here{% endblock %}
+
+{% block content %}
+    <h2>Update your goal here:</h2>
+
+  <!-- Page Content -->
+  <div class="container">
+
+    <form action="." method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <input type="submit" value="Create">
+    </form>
+  </div>
+
+{% endblock %}
+
+{% block extra_content %}{% endblock %}

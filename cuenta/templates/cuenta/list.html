@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}All your accounts{% endblock %}
+
+{% block content %}
+
+<!-- Page Content -->
+  <div class="container">
+    {% if mgs %}
+    <div class="card text-white bg-secondary my-5 py-4 text-center">
+      <div class="card-body">
+        <p class="text-white m-0">Add flash messages here. check syntax, make pretty.
+            {% for message in mgs %}
+                {{ message }}<br>
+            {% endfor %}
+        </p>
+      </div>
+    </div>
+    {% endif %}
+    <!-- Content Row -->
+    <div class="row">
+    {% for cuenta in cuentas %}
+      <div class="col-md-4 mb-5">
+        <div class="card h-100">
+          <div class="card-body">
+            <h2 class="card-title">Tu cuenta en {{ cuenta.currency }}</h2>
+            <p class="card-text">Saldo: {{ cuenta.balance }} {{ cuenta.currency }}</p>
+          </div>
+          <div class="card-footer">
+            <a href="{{ cuenta.get_absolute_url }}" class="btn btn-primary btn-sm">Entra</a>
+          </div>
+        </div>
+      </div>
+      <!-- /.col-md-4 -->
+    {% endfor %}
+    <div class="col-md-4 mb-5">
+        <div class="card h-100">
+          <div class="card-body">
+            <h2 class="card-title">Abre una cuenta</h2>
+          </div>
+          <div class="card-footer">
+            {% if cuentas|length < 3 %}
+            <a href="{% url 'cuentacreate' %}" class="btn btn-primary btn-sm">Abre tu cuenta</a>
+            {% else %}
+            <p class="card-text">De momento solo puedes tener 1 cuenta por cada moneda.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <!-- /.col-md-4 -->
+    </div>
+    <!-- /.row -->
+
+  </div>
+  <!-- /.container -->
+
+{% endblock %}

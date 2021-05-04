@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}All your Links{% endblock %}
+
+{% block content %}
+
+<!-- Page Content -->
+  <div class="container">
+    <!-- Content Row -->
+    <div class="row">
+      <center>
+        <h3>Send a link by email</h3>
+      </center>
+    </div>
+    <div class="row">
+    {% for link in links %}
+      <div class="col-md-4 mb-5">
+        <div class="card h-100">
+          <div class="card-body">
+            <h2 class="card-title">{{ link.description }}</h2>
+            <p class="card-text">
+              {% if link.status != 'PAID' %}
+                <a href="{% url 'linksendpreview' link.id %}" class="btn btn-primary btn-sm">Send Link</a>
+                {{ link.status }}<br>
+                <a href="{% url 'linkcancel' link.id %}" class="btn btn-primary btn-sm">Cancel Link</a>
+              {% else %}
+                {{ link.status }} - Resend receipt? <a href="#" class="btn btn-primary btn-sm">Resend</a>
+              {% endif %}
+            </p>
+          </div>
+          <div class="card-footer">
+            or buttons here?
+          </div>
+        </div>
+      </div>
+      <!-- /.col-md-4 -->
+    {% endfor %}
+      <!-- /.col-md-4 -->
+    </div>
+    <!-- /.row -->
+
+  </div>
+  <!-- /.container -->
+
+{% endblock %}

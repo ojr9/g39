@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Your goal{% endblock %}
+
+{% block content %}
+
+  <!-- Page Content -->
+  <div class="container">
+    <!-- Heading Row -->
+    <div class="row align-items-center my-5">
+      <div class="col-lg-7">
+        <img class="img-fluid rounded mb-4 mb-lg-0" src="{{ goal.image }}" alt="">
+      </div>
+      <!-- /.col-lg-8 -->
+      <div class="col-lg-5">
+        <h2 class="font-weight-light">{{ goal.title }}</h2>
+        <p>
+            {{ goal.description }}
+        </p>
+        <p>
+            Ultima actualizacion: {{ goal.updated }}
+            <a href="{% url 'goalsaveupdate' id goal.id %}" class="btn btn-primary btn-sm">AQUI</a>
+        </p>
+      </div>
+<!--       /.col-md-4 -->
+    </div>
+    <!-- /.row -->
+
+    <!-- Content Row -->
+    <div class="row">
+      <div class="col-md-4 mb-5">
+        <div class="card h-100">
+          <div class="card-body">
+            <h2 class="card-title">Add to from account</h2>
+            <p class="card-text">
+              <form method="post" action="save/">
+                {{ form.as_p }}
+                {% csrf_token %}
+                <input type="submit" value="Lock in!">
+              </form>
+            </p>
+          </div>
+          <div class="card-footer">
+            You can add maximum the amount you have in the account.
+          </div>
+        </div>
+      </div>
+      <!-- /.col-md-4 -->
+      <div class="col-md-4 mb-5">
+        <div class="card h-100">
+          <div class="card-body">
+            <h2 class="card-title">Link Payments</h2>
+            <p class="card-text">Lorem ipsum ...</p>
+          </div>
+          <div class="card-footer">
+            <a href="#" class="btn btn-primary btn-sm">Create</a>
+            <a href="#" class="btn btn-primary btn-sm">List</a>
+          </div>
+        </div>
+      </div>
+      <!-- /.col-md-4 -->
+      <div class="col-md-4 mb-5">
+        <div class="card h-100">
+          <div class="card-body">
+            <h2 class="card-title">Crowdfunds</h2>
+            <p class="card-text">Lorem ipsum dolor sit amet...</p>
+          </div>
+          <div class="card-footer">
+            <a href="#" class="btn btn-primary btn-sm">More Info</a>
+          </div>
+        </div>
+      </div>
+      <!-- /.col-md-4 -->
+
+<!--    </div>-->
+<!--    &lt;!&ndash; /.row &ndash;&gt;-->
+
+<!--    &lt;!&ndash; Copy call to Action Well for transactions &ndash;&gt;-->
+<!--    <div class="card my-5 py-4">-->
+<!--      <div class="card-body">-->
+<!--          <p class="m-0"><h2>Transactions</h2>-->
+<!--          Here goes a list of all the transactions this account has seen. First as objects, then as API input...-->
+<!--          <table>-->
+<!--            {% for t in transactions %}-->
+<!--                <tr>-->
+<!--                  <td>{{ t.created }}</td><td>{{ t.description }}</td><td>{{ t.amount }}</td>-->
+<!--                </tr>-->
+<!--            {% empty %}-->
+<!--              No transactions done yet.-->
+<!--            {% endfor %}-->
+<!--          </table>-->
+<!--        </p>-->
+<!--      </div>-->
+<!--    </div>-->
+
+  </div>
+<!--  &lt;!&ndash; /.container &ndash;&gt;-->
+
+{% endblock %}
+{% block extra_content %}{% endblock %}

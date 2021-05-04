@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<script type="text/javascript" src="{% static 'js/mangopay-kit.min.js' %}"></script>
+
+
+<script type="text/javascript">
+function registerCard() {
+    var resultDiv = document.getElementById("result");
+    resultDiv.innerHTML = "Proccessing ...";
+    resultDiv.style.color = "black";
+
+    mangoPay.cardRegistration.baseURL = "https://api.sandbox.mangopay.com";
+    mangoPay.cardRegistration.clientId = "myshinyplattest";
+
+// Initialize with card register data prepared on the server
+mangoPay.cardRegistration.init({
+    cardRegistrationURL: {CardRegistrationURL property},
+    preregistrationData: {PreregistrationData property},
+    accessKey: {AccessKey property},
+    Id: {Id property}
+});
+
+// Card data collected from the user
+var cardData = {
+    cardNumber: $("#card_number").val(),
+    cardExpirationDate: $("#card_exp_date").val(),
+    cardCvx: $("#card_cvx").val(),
+    cardType: $("#card_type").val()
+};
+
+// Register card
+mangoPay.cardRegistration.registerCard(
+    cardData,
+    function(res) {
+        // Success, you can use res.CardId now that points to registered card
+    },
+    function(res) {
+        // Handle error, see res.ResultCode and res.ResultMessage
+    }
+);
+</script>
+
+<div class="payment-errors"></div>
+<form action="" method="POST">
+    {% csrf_token %}
+    <h3>Card registration data:</h3>
+    {{ cardRegId }} <br/>
+    {{ accessKey }} <br/>
+    {{ preregistrationdata }} <br/>
+    {{ cardRegistrationURL }}
+    <div><label>Card registration ID</label>
+        <input class="card_registration_id" value={{ cardRegId }} />
+    </div>
+    <div><label>Access key</label>
+        <input class="access_key" value={{ accessKey }} />
+    </div>
+    <div><label>Preregistration data</label>
+        <input class="preregistration_data" size=80 value={{ preregistrationdata }} />
+    </div>
+    <div><label>Card registration url</label>
+        <input class="card_registration_url" size=60 value={{ cardRegistrationURL }} />
+    </div>
+
+    <input class="baseURL" type="hidden" value={{ baseURL }} />
+    <input class="clientId" type="hidden" value={{ clientId }} />
+
+    <br/>
+    <h3>Card data:</h3>
+    <div class="form-row"><label>Card number</label>
+        <input class="card_number" type="text" value="4970100000000154" size="20" />
+    </div>
+
+    <div class="form-row">
+        <label>CVC</label>
+        <input class="card_cvx" type="text" value="123" size="4" />
+    </div>
+
+    <div class="form-row">
+        <label>Expiry Date (MMYY)</label>
+        <input class="card_exp_date" type="text" value="1220" size="4" />
+    </div>
+
+    <div class="form-row">
+        <label>card type</label>
+        <input class="card_type" type="text" value="CB_VISA_MASTERCARD" />
+    </div>
+
+    <br/>
+
+    <h2 onclick="registerCard();">Get Card ID</h2>
+    <div id="result"></div>
+
+</form>
+{% endblock %}

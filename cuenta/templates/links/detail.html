@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Pay by Link{% endblock %}
+
+{% block content %}
+
+  <!-- Page Content -->
+  <div class="container">
+  {% if link.status == 'PAID' %}
+    <h1>This payment has been duly processed.</h1>
+
+  {% else %}
+    <!-- Heading Row -->
+    <div class="row align-items-center my-5">
+      <div class="col-lg-5">
+        Replace with a QR code?
+      </div>
+      <div class="col-lg-7">
+        <h1 class="font-weight-light">Pay by Link by G39</h1>
+        <p>Beneficiario:  {{ link.receiver.first_name }} {{ link.receiver.last_name }}<br>
+           Cuenta: {{ link.receiver_account.viban }} the amount of {{ link.amount }} <br>
+          {{ link.description }} - code: {{ link.sec_code }}
+        </p>
+        <p>
+          <form action="{{ link.code_check }}" method="post">
+            {{ form.as_p }}
+            {% csrf_token %}
+            <input type="submit" value="Validate Code">
+          </form>
+        </p>
+      </div>
+      <!-- /.col-md-4 -->
+    </div>
+    <!-- /.row -->
+  {% endif %}
+    <!-- Call to Action Well -->
+    <div class="card text-white bg-secondary my-5 py-4 text-center">
+      <div class="card-body">
+        <p class="text-white m-0">Add some messge here.
+        </p>
+      </div>
+    </div>
+  </div>
+
+
+
+{% endblock %}
+{% block extra_content %}{% endblock %}

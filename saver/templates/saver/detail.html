@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<h1>
+    Your Profile!
+</h1>
+<p>
+    <a href="{% url 'saverupdate' %}">Edit your profile</a><br>
+
+
+</p>
+<p>
+    <h3>This is your new profile {{ saver.user.first_name }}</h3>
+</p>
+
+Here is a list of all your accounts:
+<p>
+{% for cuenta in cuentas %}
+    {{ cuenta }} holds {{ cuenta.balance }} {{ cuenta.currency }}
+{% empty %}
+    Go create an account!
+{% endfor %}
+</p>
+can add some other stuff here. Really its hard to get interested for building the templates.
+    and I have no clue what I will write in each... This really is a bit of a nuisance, especially for translations
+<ul>
+    <li>name full</li>
+    <li>dob</li>
+    <li>citizenship,</li>
+    <li>mobile num</li>
+    <li>email</li>
+    <li>allow emails to be found for transfers</li>
+</ul>
+
+
+app settings:
+appearance change wow
+languange
+makreting coms
+promotional codes
+rate them on google play
+
+
+
+There's nothing here now. for now.
+{% endblock %}
+
