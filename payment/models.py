@@ -6,8 +6,7 @@ from django.shortcuts import HttpResponse, redirect
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 
-from mangopay.fields import MoneyField, AddressField
-from .fields import MangoMoneyField
+# from mangopay.fields import MoneyField, AddressField
 
 from mangopay.constants import USER_TYPE_CHOICES, CARD_TYPE_CHOICES, PAYMENT_STATUS_CHOICES, LEGAL_USER_TYPE_CHOICES, \
     TRANSACTION_TYPE_CHOICES
@@ -78,26 +77,32 @@ class MangoNaturalUser(Saver):
         # Add more data from the return of the call
         self.save()
 
-    def is_validated(self):
-        return self.validated
+    def _validated(self):
+        return self.validation_status
 
     def validate(self, document_type, front, back):
-        doc = Document(type='IDENTITY_PROOF', user=self.mid)
-        doc.save()
+        if not self.validation_status == 'VALIDATED':
+            doc = Document(type='IDENTITY_PROOF', user=self.mid)
+            doc.save()
 
-        with open(front, 'rb') as f:
-            encf = base64.b64decode(f.read())
+            with open(front, 'rb') as f:
+                encf = base64.b64decode(f.read())
 
-        with open(back, 'rb') as b:
-            encb = base64.b64encode(b.read())
+            with open(back, 'rb') as b:
+                encb = base64.b64encode(b.read())
 
-        pf = Page(document=doc, file=encf, user=self.mid)
-        pf.save()
+            pf = Page(document=doc, file=encf, user=self.mid)
+            pf.save()
 
-        pb = Page(document=doc, file=encb, user=self.mid)
-        pb.save()
+            pb = Page(document=doc, file=encb, user=self.mid)
+            pb.save()
 
-    #     doc --> ask validation via the PUT method.
+            doc.status = 'VALIDATION_ASKED'
+            doc.save()
+            print(doc)
+            # see if this validation works or if the last step is necessary.
+        else:
+            return 'Documents have been already validated'
 
     def get_docs_list(self):
         mpu = NaturalUser.get(self.mid)
@@ -233,13 +238,14 @@ class MangoCardRegistration(models.Model):
     card = models.OneToOneField(MangoCard, on_delete=models.CASCADE, related_name='mangocardregistration', null=True)
 
     def create(self, user):
-        mid = Saver.objects.get(user=user).mid
-        registration = CardRegistration(UserId=mid, Currency=self.currency)
+        saver = Saver.objects.get(user=user)
+        registration = CardRegistration(UserId=saver.mid, Currency=self.currency)
         registration.save()
-        self.crid = registration['Id']
+        print(registration.Id)
+        self.crid = registration.Id
         # Create the card that will hold all the data once registration is done
         if not self.card:
-            card = MangoCard(user=user, mid=mid, currency=self.currency, is_valid=True, card_type=self.card_type)
+            card = MangoCard(saver=saver, mid=saver.mid, currency=self.currency, is_valid=True, card_type=self.card_type)
             card.save()
             if not self.card:
                 return HttpResponse('card in thingy not beign saved')
@@ -268,8 +274,8 @@ class MangoPreAuth(models.Model):
 
 class MangoTransfer(models.Model):
     tid = models.IntegerField()
-    # author as in hte user / Saver that makes the transfer
-    status = models.CharField(max_length=9, choices='', blank=True, null=True)
+    saver = models.ForeignKey(Saver, on_delete=models.DO_NOTHING, related_name='savertransfer')
+    status = models.CharField(max_length=9, default='Paid', blank=True, null=True)
     # Change the last one to to a default value adn see if the choices are right
     execution_date = models.DateTimeField(blank=True, null=True)
     credited_cuenta = models.OneToOneField(Cuenta, on_delete=models.PROTECT, related_name='transfercreditedaccount')
@@ -281,16 +287,15 @@ class MangoTransfer(models.Model):
     fees = models.DecimalField(max_digits=6, decimal_places=2)
 
     currency = models.CharField(max_length=3, choices=supported_currencies, default='EUR')
-    # fees2 = MangoMoneyField(amount, currency) See if this makes more sense and gets processed right!!!!!
 
-    def create(self, user):
-        saver = Saver.objects.get(user=user)
-        transfer = Transfer(AuthorId=saver.mid, DebitedFunds=MangoMoneyField(self.amount, self.currency),
-                            Fees=MangoMoneyField(self.amount*0.05, self.currency),
+    def create(self):
+        transfer = Transfer(AuthorId=self.saver.mid, DebitedFunds=Money(self.amount, self.currency),
+                            Fees=Money(_money_format(self.amount*0.05), self.currency),
                             DebitedWalletId=self.debited_cuenta.wid, CreditedWalletId=self.credited_cuenta.wid)
 
         transfer.save()
-        self.tid = transfer.get_pk()
+        self.tid = transfer.Id
+        #try the Id thingy like this.
         self.execution_date = datetime.datetime.fromtimestamp(transfer.execution_date)
         self.save()
     # set execution date from timestamp to normal
@@ -351,8 +356,8 @@ class MangoCardWebPayIn(MangoPayIn):
         self.author = Saver.objects.get(user=user).mid
         self.cwid = MangoWallet.objects.get(account=account).wid
         payin = CardWebPayIn(AuthorId=self.author.mid,
-                             DebitedFunds=MoneyField(_money_format(self.amount), self.currency),
-                             Fees=MoneyField(_money_format(self.fees), self.currency),
+                             DebitedFunds=Money(_money_format(self.amount), self.currency),
+                             Fees=Money(_money_format(self.fees), self.currency),
                              ReturnURL=self.return_url,
                              CardType=self.card_type,
                              CreditedWalletId=self.cwid,
@@ -397,8 +402,8 @@ class MangoBankWirePayIn(MangoPayIn):
         mid = Saver.objects.get(user=user).mid
         wallet = MangoWallet.objects.get(mid=mid).wid
         bw = BankWirePayIn(AuthorId=mid, CreditedWalletId=wallet,
-                           DeclaredDebitedFunds=MoneyField(amount, wallet.currency),
-                           DeclaredFees=MoneyField(fees, wallet.currency))
+                           DeclaredDebitedFunds=Money(amount, wallet.currency),
+                           DeclaredFees=Money(fees, wallet.currency))
         bw.save()
         self.piid = bw.get_pk()
         self.creation_date = bw['CreationDate']
@@ -423,15 +428,15 @@ class MangoBankWirePayIn(MangoPayIn):
 
 
 class MangoBankAccount(models.Model):
-    saver = models.ForeignKey('saver.Saver', on_delete=models.DO_NOTHING, related_name='saverbankaccount')
-    bid = models.PositiveIntegerField()
+    saver = models.ForeignKey(Saver, on_delete=models.DO_NOTHING, related_name='saverbankaccount')
+    bid = models.PositiveIntegerField(default=0)
     bank_account_type = models.CharField(max_length=6, default='IBAN')
     al1 = models.CharField(max_length=150)
     al2 = models.CharField(max_length=150)
     pc = models.CharField(max_length=8)
     country = models.CharField(max_length=25) #change for a country field later on.
     iban = models.CharField(max_length=50)
-    bic = models.CharField(max_length=12)
+    bic = models.CharField(max_length=12, blank=True, null=True)
 
     def _make_address(self):
         return Address(address_line_1=self.al1, address_line_2=self.al2, postal_code=self.pc, country=self.country)
@@ -441,11 +446,10 @@ class MangoBankAccount(models.Model):
         # the model utils manager installed !!! Now this makes sense why to have it and how to use it!
         # Also because the MIDs are unique for all MP Objects. Makes it simpler, but only easier to see in hindsight!!
 
-        # mpu = MangoNaturalUser.objects.get(user=self.request.user)211315213213213213
-        bai = BankAccount(owner_name=(self.request.user.first_name + '' + self.request.user.last_name),
-                          user_id=self.user.mid, owner_address=self._make_address(), iban=self.iban, bic=self.bic)
-        bai.save()
-        self.bid = bai.get_pk()
+        ba = BankAccount(owner_name=(self.saver.user.first_name + '' + self.saver.user.last_name),
+                          user_id=self.saver.mid, owner_address=self._make_address(), iban=self.iban, bic=self.bic)
+        ba.save()
+        self.bid = ba.Id
         # get other stuff from the API to add to the model?
         self.save()
 
@@ -454,8 +458,8 @@ class MangoPayOut(models.Model):
 
     poid = models.PositiveIntegerField(default=0)
     creation_date = models.DateTimeField()
-    author = models.ForeignKey(Saver, on_delete=models.PROTECT, related_name='%(class)s_mangopayout_author')
-    dwid = models.ForeignKey(MangoWallet, on_delete=models.PROTECT, related_name='%(class)s_mangopayout_dwid')
+    saver = models.ForeignKey(Saver, on_delete=models.PROTECT, related_name='savermangopayout')
+    dwid = models.ForeignKey(MangoWallet, on_delete=models.PROTECT, related_name='dwidmangopayout')
     amount = models.DecimalField(max_digits=8, decimal_places=2)
     fees = models.DecimalField(max_digits=8, decimal_places=2)
     currency = models.CharField(max_length=3, default='EUR')
@@ -473,15 +477,15 @@ class MangoPayOut(models.Model):
     def check_status(self):
         return f'{self.status} - {self.result_message}'
 
-    # def create(self):
-    #     # mpu = Saver.objects.get(self.author)
-    #     ba = MangoBankAccount.objects.get(owner=mpu)
-    #     po = BankWirePayOut(author=mpu.mid, debited_funds=Money(amount=self.amount, currency=self.currency),
-    #                         debited_wallet=self.dwid, bank_account=ba.bid, bank_wire_ref=self.bank_wire_ref)
-    #     po.save()
-    #     self.poid = po.get_pk()
-    #     # get other stuff from the api call and add accordingly
-    #     self.save()
+    def create(self):
+        # mpu = Saver.objects.get(self.author)
+        ba = MangoBankAccount.objects.get(owner=mpu)
+        po = BankWirePayOut(author=self.saver.mid, debited_funds=Money(amount=self.amount, currency=self.currency),
+                            debited_wallet=self.dwid, bank_account=ba.bid, bank_wire_ref=self.bank_wire_ref)
+        po.save()
+        self.poid = po.get_pk()
+        # get other stuff from the api call and add accordingly
+        self.save()
 
     def __str__(self):
         return self.poid

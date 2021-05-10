@@ -20,7 +20,8 @@ class SaverView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super(SaverView, self).get_context_data()
         context['cuentas'] = Cuenta.objects.filter(user=self.request.user)
-        context['docs'] = MangoNaturalUser.objects.get(user=self.request.user).get_docs_list()
+        if not self.object.mid == 0:
+            context['docs'] = MangoNaturalUser.objects.get(user=self.request.user).get_docs_list()
         return context
 
 
@@ -38,7 +39,7 @@ class SaverUpdate(LoginRequiredMixin, UpdateView):
 class SaverUpdateMPNU(LoginRequiredMixin, UpdateView):
     model = MangoNaturalUser
     template_name = 'saver/update.html'
-    form_class = UpdateSaverForm()
+    form_class = UpdateSaverForm
 
     def get_object(self, queryset=None):
         obj = MangoNaturalUser.objects.get(user=self.request.user)

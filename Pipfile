@@ -11,6 +11,7 @@ segno = "*"
 django-allauth = "*"
 django-environ = "*"
 celery = "*"
+django-debug-toolbar = "*"
 
 [dev-packages]
 

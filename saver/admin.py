@@ -5,5 +5,5 @@ from saver.models import Saver
 
 @admin.register(Saver)
 class SaverAdmin(admin.ModelAdmin):
-    list_display = ['user', 'mid', 'user_type', 'active', 'validated']
+    list_display = ['user', 'mid', 'user_type', 'active', 'validation_status']
 

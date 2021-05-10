@@ -23,7 +23,11 @@ from payment.models import MangoNaturalUser, MangoWallet
 from .forms import GoalSaveCreateForm, GroupSaveCreateForm, Deposit, PaymentLinkCreateForm, \
     PaymentLinkSecCodeConfirmForm, GoalSaveSave, LinkSendEmail, WebTopUpLinkForm
 from .models import Cuenta, GoalSaving, GroupSave, Transaction, LinkPayment
+
+from saver.models import Saver
 from payment.models import MangoCard
+
+
 
 # This works well, but up to teh point where an infinite loop starts and generates a ton of image files until a timeout
 # comes... Will comment out until later. Still not 100% sure why a QR code should be there in the view.
@@ -106,7 +110,9 @@ class CuentaView(LoginRequiredMixin, DetailView):
         context['goals'] = GoalSaving.objects.filter(account=self.object)
         context['transactions'] = Transaction.objects.filter(receiver_account=self.kwargs['id'])
         context['links'] = LinkPayment.objects.filter(receiver_account=self.kwargs['id'])[:5]
-        card = MangoCard.objects.filter(user=self.request.user, currency=self.object.currency)
+        saver = Saver.objects.get(user=self.request.user)
+        card = MangoCard.objects.filter(saver=saver, currency=self.object.currency)
+
         if card:
             context['form'] = Deposit(user=self.request.user, currency=self.object.currency) # is this syntax right?!
 
@@ -206,7 +212,8 @@ class PaymentLinkCreate(LoginRequiredMixin, CreateView):
     form_class = PaymentLinkCreateForm
 
     def form_valid(self, form):
-        form.instance.receiver = self.request.user
+        saver = Saver.objects.get(user=self.request.user)
+        form.instance.receiver = saver
         form.instance.receiver_account = Cuenta.objects.get(id=self.kwargs['id'])
         form.instance.expiry = timedelta(days=60)
         linkemailsend(link=form.instance, email=form.cleaned_data['email'])
@@ -224,7 +231,8 @@ class PaymentLinkList(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         qs = super(PaymentLinkList, self).get_queryset()
-        return qs.filter(receiver=self.request.user)
+        saver = Saver.objects.get(user=self.request.user)
+        return qs.filter(receiver=saver)
 
 
 class PaymentLinkListView(LoginRequiredMixin, View):
