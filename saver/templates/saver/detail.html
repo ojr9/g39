@@ -25,6 +25,21 @@ Here is a list of all your accounts:
 </p>
 can add some other stuff here. Really its hard to get interested for building the templates.
     and I have no clue what I will write in each... This really is a bit of a nuisance, especially for translations
+<p>
+    This is the section for the validation:
+    {% if docs %}
+        {% for doc in docs %}
+            {{ doc }} - is a doc
+        {% empty %}
+            No docs have been uploaded for validation. Recheck <a href="{{ mpu.get_docs_list }}">here</a>
+        {% endfor %}
+    {% endif %}
+</p>
+<p>
+    {{ mpu }} is the mpu. Can call methods from this.
+</p>
+
+
 <ul>
     <li>name full</li>
     <li>dob</li>
@@ -33,8 +48,14 @@ can add some other stuff here. Really its hard to get interested for building th
     <li>email</li>
     <li>allow emails to be found for transfers</li>
 </ul>
-
-
+<p>
+Here are the bank accounts you have registered, where to accept withdrawals:<br>
+{% for ba in bankaccounts %}
+    {{ ba }} - <a href="{% url 'bankaccountdelete' ba.id %}">Delete?</a> <br>
+{% empty %}
+    <a href="{% url 'bankaccountcreate' %}" class="btn btn-primary btn-sm">Register a withdrawal account</a>
+{% endfor %}
+</p>
 app settings:
 appearance change wow
 languange

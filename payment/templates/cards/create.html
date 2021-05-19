@@ -3,13 +3,13 @@
 
 {% block content %}
 
-<script type="text/javascript" src="{% static 'js/mangopay-kit.js' %}"></script>
+<script type="text/javascript" src="{% static 'js/mangopay-kit.min.js' %}"></script>
 
 
 <script type="text/javascript">
 function registerCard() {
     var resultDiv = document.getElementById("result");
-    resultDiv.innerHTML = "Proccessing ...";
+    resultDiv.innerHTML = "Processing ...";
     resultDiv.style.color = "black";
 
     mangoPay.cardRegistration.baseURL = "https://api.sandbox.mangopay.com";
@@ -36,13 +36,14 @@ function registerCard() {
     mangoPay.cardRegistration.registerCard(
             cardData,
             function (res) {
-                var message = 'Card has been succesfully registered under the Card Id ' + res.CardId + '.<br />';
-                message += 'Card is now ready to use e.g. in a «Direct PayIn» Object.';
+                var message = 'Card has been successfully registered under the Card Id ' + res.CardId + '.<br> so here I call a function or stuff?';
+                message += 'Card is now ready to use. Use a tag to fire a method to register!!!!!!!!!';
+                message += 'Assuming this shit works after all. ';
                 resultDiv.innerHTML = message;
                 resultDiv.style.color = "green";
             },
             function (res) {
-                var message = 'Error occured while registering the card.<br />';
+                var message = 'Error occurred while registering the card.<br />';
                 message += 'Code: ' + res.ResultCode + ', message: ' + res.ResultMessage;
                 resultDiv.innerHTML = message;
                 resultDiv.style.color = "red";
@@ -53,51 +54,52 @@ function registerCard() {
 </script>
 
 <div class="payment-errors"></div>
-<form action="" method="POST">
+<form action="{{ preregdata.CardRegistrationURL }}" method="POST">
     {% csrf_token %}
     <h3>Card registration data:</h3>
-    {{ cardRegId }} <br/>
-    {{ accessKey }} <br/>
-    {{ preregistrationdata }} <br/>
-    {{ cardRegistrationURL }}
+    {{ preregdata.CardRegId }} <br>
+    {{ preregdata.AccessKey }} <br>
+    {{ preregdata.PreregistrationData }} <br>
+    {{ preregdata.CardRegistrationURL }} <br>
+
     <div><label>Card registration ID</label>
-        <input class="card_registration_id" value={{ cardRegId }} />
+        <input class="card_registration_id" type="hidden" value="{{ preregdata.CardRegId }}">
     </div>
     <div><label>Access key</label>
-        <input class="access_key" value={{ accessKey }} />
+        <input class="access_key" type="hidden" value="{{ preregdata.AccessKey }}">
     </div>
     <div><label>Preregistration data</label>
-        <input class="preregistration_data" size=80 value={{ preregistrationdata }} />
+        <input class="preregistration_data" type="hidden" size=80 value="{{ preregdata.PreregistrationData }}">
     </div>
     <div><label>Card registration url</label>
-        <input class="card_registration_url" size=60 value={{ cardRegistrationURL }} />
+        <input class="card_registration_url" type="hidden" size=60 value="{{ preregdata.CardRegistrationURL }}">
     </div>
 
-    <input class="baseURL" type="hidden" value={{ baseURL }} />
-    <input class="clientId" type="hidden" value={{ clientId }} />
+    <input class="baseURL" type="hidden" value="{{ baseURL }}">
+    <input class="clientId" type="hidden" value="{{ clientId }}">
 
     <br/>
     <h3>Card data:</h3>
     <div class="form-row"><label>Card number</label>
-        <input class="card_number" type="text" value="4970100000000154" size="20" />
+        <input class="card_number" type="number" value="4970100000000154" size="16" />
     </div>
 
     <div class="form-row">
         <label>CVC</label>
-        <input class="card_cvx" type="text" value="123" size="4" />
+        <input class="card_cvx" type="number" value="123" size="4" />
     </div>
 
     <div class="form-row">
         <label>Expiry Date (MMYY)</label>
-        <input class="card_exp_date" type="text" value="1220" size="4" />
+        <input class="card_exp_date" type="number" value="1220" size="4" />
     </div>
 
     <div class="form-row">
-        <label>card type</label>
-        <input class="card_type" type="text" value="CB_VISA_MASTERCARD" />
+        <label>Cards accepted: VISA and MASTERCARD</label>
+        <input class="card_type" type="hidden" value="CB_VISA_MASTERCARD" />
     </div>
-
-    <br/>
+    The card will be registered with the name you registered your account with.
+    <br>
 
     <h2 onclick="registerCard();">Get Card ID</h2>
     <div id="result"></div>

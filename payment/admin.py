@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import MangoNaturalUser, MangoWallet, MangoCard, MangoLegalUser
+from .models import MangoNaturalUser, MangoWallet, MangoCard, MangoLegalUser, MangoBankAccount
 
 
 @admin.register(MangoNaturalUser)
@@ -16,3 +16,8 @@ class MangoCardAdmin(admin.ModelAdmin):
 @admin.register(MangoWallet)
 class MangoWalletAdmin(admin.ModelAdmin):
     list_display = ['id', 'cuenta']
+
+
+@admin.register(MangoBankAccount)
+class MangoBankAccountAdmin(admin.ModelAdmin):
+    list_display = ['id', 'saver', 'bid', 'account_number', 'description']

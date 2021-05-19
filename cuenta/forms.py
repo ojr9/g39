@@ -1,6 +1,7 @@
 from django import forms
 
 from payment.models import MangoCard
+from saver.models import Saver
 from .models import GoalSaving, Cuenta, GroupSave, LinkPayment
 
 
@@ -27,7 +28,8 @@ class Deposit(forms.Form):
 
     def __init__(self, user, currency, *args, **kwargs):
         super(Deposit, self).__init__(*args, **kwargs)
-        self.fields['card'].queryset = MangoCard.objects.filter(user=user, currency=currency)
+        saver = Saver.objects.get(user=user)
+        self.fields['card'].queryset = MangoCard.objects.filter(saver=saver, currency=currency)
 
 
 class PaymentLinkCreateForm(forms.ModelForm):

@@ -4,7 +4,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 
 from .models import Saver
 from .forms import UpdateSaverForm
-from payment.models import MangoNaturalUser
+from payment.models import MangoNaturalUser, MangoBankAccount
 from cuenta.models import Cuenta
 
 
@@ -21,7 +21,9 @@ class SaverView(LoginRequiredMixin, DetailView):
         context = super(SaverView, self).get_context_data()
         context['cuentas'] = Cuenta.objects.filter(user=self.request.user)
         if not self.object.mid == 0:
-            context['docs'] = MangoNaturalUser.objects.get(user=self.request.user).get_docs_list()
+            context['mpu'] = MangoNaturalUser.objects.get(user=self.request.user)
+            # context['docs'] = MangoNaturalUser.objects.get(user=self.request.user).get_docs_list()
+        context['bankaccounts'] = MangoBankAccount.objects.filter(saver=self.object)
         return context
 
 

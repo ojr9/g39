@@ -11,13 +11,13 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 
 from pathlib import Path
-import environ
+import environ # this env shit aint working
+import os
 
-
-env = environ.Env(
-    DEBUG=(bool, True)
-)
-environ.Env.read_env()
+# env = environ.Env(
+#     DEBUG=(bool, True)
+# )
+# environ.Env.read_env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,10 +27,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env('SECRET_KEY')
+# SECRET_KEY = env('SECRET_KEY')
+SECRET_KEY = os.environ.get('../.env', 'SECRET_KEY')
+# SECRET_KEY = 'ksdhflasjfhlqhjry837687346q87y'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env('DEBUG')
+DEBUG = os.environ.get('../.env', 'DEBUG')
 
 ALLOWED_HOSTS = []
 
@@ -171,11 +173,15 @@ ACCOUNT_FORMS = {'signup': 'saver.forms.UserSignupCustomForm'}
 
 # MGP params
 if DEBUG:
-    ClientId = env('SB_CLIENT_MGP')
-    APIKEY = env('SB_APIKEY_MGP')
+    ClientId = os.environ.get('../.env', 'SB_CLIENT_MGP')
+    APIKEY = os.environ.get('../.env', 'SB_APIKEY_MGP')
+    BaseURL = os.environ.get('../.env', 'SB_BASE_URL')
 else:
-    ClientId = env('CLIENT_MGP')
-    APIKEY = env('APIKEY_MGP')
+    ClientId = os.environ.get('../.env', 'CLIENT_MGP')
+    APIKEY = os.environ.get('../.env', 'APIKEY_MGP')
+    BaseURL = os.environ.get('../.env', 'BASE_URL')
+
+FEES = 0.05
 
 DEBUG_TOOLBAR_PANELS = [
     'debug_toolbar.panels.history.HistoryPanel',

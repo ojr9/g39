@@ -6,6 +6,7 @@ from datetime import timedelta, datetime
 # from django.utils.timezone import now, not sure this is the right one, but ok
 # from segno import make
 # import io
+from django.conf import settings
 from django.shortcuts import render, get_object_or_404, HttpResponseRedirect, HttpResponse
 from django.urls import reverse_lazy, reverse
 from django.views.generic import View, ListView, DetailView, CreateView, UpdateView, DeleteView
@@ -19,13 +20,14 @@ from django.core.files.base import ContentFile
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from payment.models import MangoNaturalUser, MangoWallet
+from payment.models import MangoNaturalUser, MangoWallet, MangoBankAccount
 from .forms import GoalSaveCreateForm, GroupSaveCreateForm, Deposit, PaymentLinkCreateForm, \
     PaymentLinkSecCodeConfirmForm, GoalSaveSave, LinkSendEmail, WebTopUpLinkForm
 from .models import Cuenta, GoalSaving, GroupSave, Transaction, LinkPayment
 
 from saver.models import Saver
-from payment.models import MangoCard
+from payment.models import MangoCard, MangoPayOut
+from payment.forms import MangoPayoutForm
 
 
 
@@ -47,6 +49,14 @@ from payment.models import MangoCard
 def linkemailsend(link, email):
     message = f'Click here to access your payment link and pay: {link.get_absolute_url}'
     send_mail(f'Payment Link by G - {link.id}', message, 'link_sender@localhost', [email])
+
+
+def _make_fees(amount, fees=0.05):
+    if not settings.FEES and fees==0.05:
+        fee = amount/20
+    else:
+        fee = amount*settings.FEES
+    return int(fee)
 
 
 class IsOwnerMixin:
@@ -112,10 +122,11 @@ class CuentaView(LoginRequiredMixin, DetailView):
         context['links'] = LinkPayment.objects.filter(receiver_account=self.kwargs['id'])[:5]
         saver = Saver.objects.get(user=self.request.user)
         card = MangoCard.objects.filter(saver=saver, currency=self.object.currency)
-
         if card:
             context['form'] = Deposit(user=self.request.user, currency=self.object.currency) # is this syntax right?!
 
+        context['bankaccounts'] = MangoBankAccount.objects.filter(saver=saver)
+        print(context['bankaccounts'])
         # context['groupsaves'] ???
         # context['crowdfunds'] ???
         return context
@@ -327,3 +338,34 @@ def cancellink(request, pl_id):
     id = link.receiver_account.id
     link.delete()
     return HttpResponseRedirect(reverse('linklist', args=[id]))
+
+
+class Payout(LoginRequiredMixin, View):
+    def get(self, request, id):
+        account = get_object_or_404(Cuenta, id=id)
+        form = MangoPayoutForm()
+        return render(request, 'payouts/create.html', {'account': account, 'form': form})
+
+    def post(self, request, id):
+        form = MangoPayoutForm(data=request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            account = get_object_or_404(Cuenta, id=id)
+            mpu = MangoNaturalUser.objects.get(user=request.user)
+            if not cd['amount'] > account.balance: #and mpu.active and mpu._validated == 'VALIDATED':
+                dwid = MangoWallet.objects.get(cuenta=account)
+                mpo = MangoPayOut(saver=mpu, dwid=dwid, amount=cd['amount'], fees=_make_fees(cd['amount']),
+                                  currency=account.currency, statement_descriptor='This is a pa',
+                                  bank_wire_ref='This is a better description....')
+                mpo.save()
+                # mpo.create()
+                # message = messages.add_message(request, messages.SUCCESS, 'Withdrawal successfully initiated')
+                return HttpResponseRedirect(reverse('', kwargs={'id': id}))
+            else:
+                # message = messages.add_message(request, messages.INFO, 'Please make sure you are not withdrawing more'
+                #                                                        ' funds than your current balance, and that your'
+                #                                                        ' account is validated beforehand.')
+                return HttpResponseRedirect(reverse('cuentaview', kwargs={'id': id}))
+        else:
+            # message = messages.add_message(request, messages.ERROR, 'You can\'t withdraw more than what you have')
+            return HttpResponseRedirect(reverse('cuentaview', kwargs={'id': id}))

@@ -36,8 +36,18 @@
         Please register a card to start <a href="{% url 'cardregistration' cuenta.id %}" class="btn btn-primary btn-sm">ReGiStEr</a>
       {% endif %}
       </div>
-
       <!-- /.col-md-4 -->
+      <div>
+        <p>
+        This is the bank accounts you have registered if you wish to withdraw funds from this account:
+          So will in the end be more than 1 bank account ok? TBS hahaha
+        {% for ba in bankaccounts %}
+          {{ ba }} - <a href="{% url 'payout' cuenta.id %}" class="btn btn-primary btn-sm">Send savings</a>
+        {% empty %}
+          Register one inside your <a href="{% url 'saverview' %}" class="btn btn-primary btn-sm">profile</a>
+        {% endfor %}
+        </p>
+      </div>
     </div>
     <!-- /.row -->
 
@@ -86,7 +96,7 @@
       <div class="col-md-4 mb-5">
         <div class="card h-100">
           <div class="card-body">
-            <h2 class="card-title">Crowdfunds or topup without registering a card</h2>
+            <h2 class="card-title">Deposits without registering a card</h2>
             <p class="card-text">
               <a href="#" class="btn btn-primary btn-sm">topup</a>
             </p>

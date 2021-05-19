@@ -22,6 +22,7 @@ urlpatterns = [
     path('__debug__/', include(debug_toolbar.urls)),
     path('account/', include('cuenta.urls')),
     path('profile/', include('saver.urls')),
+    path('payment/', include('payment.urls')),
     path('accounts/', include('allauth.urls')),
     path('loans/', include('loans.urls')),
     path('', include('pages.urls'))

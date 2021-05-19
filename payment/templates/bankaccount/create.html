@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Register your data here{% endblock %}
+
+{% block content %}
+    <h2>Register a payout account here:</h2>
+
+  <!-- Page Content -->
+  <div class="container">
+
+    <form action="." method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <input type="submit" value="Create">
+    </form>
+  </div>
+
+{% endblock %}

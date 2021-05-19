@@ -1,12 +1,11 @@
 import datetime
 import base64
 
+from django.conf import settings
 from django.db import models
 from django.shortcuts import HttpResponse, redirect
 from django.urls import reverse
 from django.contrib.auth import get_user_model
-
-# from mangopay.fields import MoneyField, AddressField
 
 from mangopay.constants import USER_TYPE_CHOICES, CARD_TYPE_CHOICES, PAYMENT_STATUS_CHOICES, LEGAL_USER_TYPE_CHOICES, \
     TRANSACTION_TYPE_CHOICES
@@ -73,11 +72,17 @@ class MangoNaturalUser(Saver):
                                  Birthday=db, Nationality=self.nationality,
                                  CountryOfResidence=self.country_of_residence)
         mango_call.save()
-        self.mid = mango_call.get_pk()
+        self.mid = mango_call.Id
         # Add more data from the return of the call
         self.save()
 
     def _validated(self):
+        mpu = NaturalUser.get(id=self.mid)
+        # mpu need to do stuff here!!!
+        # sdlkfjas ldkf ;slakdjfsd jfasd fs asd
+        #lkashd fshdf kajs hdklasfh
+        # klajsdf laksd flasdh flak sd
+
         return self.validation_status
 
     def validate(self, document_type, front, back):
@@ -112,6 +117,9 @@ class MangoNaturalUser(Saver):
         return docs
         # check for validation and status of each, see what comes back here
 
+    def __str__(self):
+        return str(self.mid)
+
 
 class MangoLegalUser(Saver):
     legal_type = models.CharField(max_length=35, choices=LEGAL_USER_TYPE_CHOICES)
@@ -128,6 +136,7 @@ class MangoLegalUser(Saver):
                                LegalRepresentativeLastName=self.user.last_name, Email=self.user.email,
                                CompanyNumber=self.company_number)
         mango_call.save()
+        self.mid = mango_call.Id
         self.save()
 
     def _add_legal_rep_email(self, email):
@@ -146,7 +155,7 @@ class MangoWallet(models.Model):
         saver = Saver.objects.get(user=self.cuenta.user)
         wallet_call = Wallet(Owners=[saver.mid], Description=self.cuenta.description, currency=self.cuenta.currency)
         wallet_call.save()
-        self.cuenta.wid = wallet_call.get_pk() # make sure an int is returned here.
+        self.cuenta.wid = wallet_call.Id # make sure an int is returned here.
         self.save()
 
     def update_wallet(self):
@@ -168,7 +177,7 @@ class MangoWallet(models.Model):
     def _ibanize(self, country='LU'):
         alias = BankingAliasIBAN(WalletId=self.cuenta.wid, Country=country)
         alias.save()
-        self.cuenta.viban = alias['IBAN']
+        self.cuenta.viban = alias['IBAN'] # is this really or should this be alias.IBAN??
         self.save()
         # When more vIBANs are there update to choose from them
 
@@ -203,17 +212,17 @@ class MangoCard(models.Model):
         # Am I getting here the first cid? then no if
         if self.cid:
             card = Card.get(self.cid)
-            self.expiration_date = card['ExpirationDate']
-            self.alias = card['Alias']
-            self.provider = card['CardProvider']
-            self.currency = card['Currency']
-            if card['Active'] == '':
+            self.expiration_date = card.ExpirationDate
+            self.alias = card.Alias
+            self.provider = card.CardProvider
+            self.currency = card.Currency
+            if card.Active == '':
                 self.is_active = True
-            if card['Validity'] == 'VALID':
+            if card.Validity == 'VALID':
                 self.is_valid = True
-            self.creation_date = card['CreationDate']
-            self.fingerprint = card['fingerprint']
-            self.card_type = card['CardType']
+            self.creation_date = card.CreationDate
+            self.fingerprint = card.fingerprint
+            self.card_type = card.CardType
             self.save()
 
     def is_expired(self):
@@ -228,7 +237,7 @@ class MangoCard(models.Model):
         return False
 
     def __str__(self):
-        return f'{self.cid} from {self.user}'
+        return f'{self.cid} from {self.saver}'
 
 
 class MangoCardRegistration(models.Model):
@@ -245,13 +254,14 @@ class MangoCardRegistration(models.Model):
         self.crid = registration.Id
         # Create the card that will hold all the data once registration is done
         if not self.card:
-            card = MangoCard(saver=saver, mid=saver.mid, currency=self.currency, is_valid=True, card_type=self.card_type)
+            card = MangoCard(saver=saver, currency=self.currency, is_valid=True, card_type=self.card_type)
             card.save()
+            self.card = card
             if not self.card:
                 return HttpResponse('card in thingy not beign saved')
         # Now the preregistration data should be in the 'registration' variable. Passing this back to the view.
-        preregdata = {'accessKey': registration['AccessKey'], 'preregistrationdata': registration['preregistrationData'],
-                      'cardRegistrationURL': registration['cardRegistrationURL'], 'cardRegId': self.crid}
+        preregdata = {'AccessKey': registration.AccessKey, 'PreregistrationData': registration.PreregistrationData,
+                      'CardRegistrationURL': registration.CardRegistrationURL, 'CardRegId': self.crid}
         return preregdata
 
     def _update(self, data):
@@ -259,11 +269,11 @@ class MangoCardRegistration(models.Model):
         reg.update(data)
         reg.save()
         crd = MangoCard.objects.get(self.card)
-        crd.cid = reg['Id']
-        crd.expiration_date = reg['ExpirationDate']
-        crd.alias = reg['Alias']
-        crd.creation_date = reg['CreationDate']
-        crd.fingerprint = reg['Fingerprint']
+        crd.cid = reg.Id
+        crd.expiration_date = reg.ExpirationDate
+        crd.alias = reg.Alias
+        crd.creation_date = reg.CreationDate
+        crd.fingerprint = reg.Fingerprint
         crd.save()
 
 
@@ -290,7 +300,7 @@ class MangoTransfer(models.Model):
 
     def create(self):
         transfer = Transfer(AuthorId=self.saver.mid, DebitedFunds=Money(self.amount, self.currency),
-                            Fees=Money(_money_format(self.amount*0.05), self.currency),
+                            Fees=Money(msdfsdfsdfsdfsdf(self.amount*0.05), self.currency),
                             DebitedWalletId=self.debited_cuenta.wid, CreditedWalletId=self.credited_cuenta.wid)
 
         transfer.save()
@@ -385,8 +395,13 @@ class MangoCardWebPayIn(MangoPayIn):
 
 
 class MangoCardDirectPayIn(MangoPayIn):
-    pass
+    card = models.ForeignKey(MangoCard, on_delete=models.DO_NOTHING, related_name='mangodirectpayinscard')
 
+    def create(self, user, account):
+        pass
+
+    def __str__(self):
+        return f'Deposit with card: {self.card} - {self.amount} on {self.creation_date}'
 
 # not good! this is not using the django fields, but the mgp fields! do I even need an address here?!
 # Don't think an address is needed here for the payin, it will be for the payout though.
@@ -405,7 +420,7 @@ class MangoBankWirePayIn(MangoPayIn):
                            DeclaredDebitedFunds=Money(amount, wallet.currency),
                            DeclaredFees=Money(fees, wallet.currency))
         bw.save()
-        self.piid = bw.get_pk()
+        self.piid = bw.Id
         self.creation_date = bw['CreationDate']
         self.status = 'CREATED'
         self.amount = amount
@@ -430,16 +445,20 @@ class MangoBankWirePayIn(MangoPayIn):
 class MangoBankAccount(models.Model):
     saver = models.ForeignKey(Saver, on_delete=models.DO_NOTHING, related_name='saverbankaccount')
     bid = models.PositiveIntegerField(default=0)
+    description = models.CharField(max_length=25)
     bank_account_type = models.CharField(max_length=6, default='IBAN')
     al1 = models.CharField(max_length=150)
-    al2 = models.CharField(max_length=150)
+    al2 = models.CharField(max_length=150, null=True, blank=True)
+    city = models.CharField(max_length=50)
     pc = models.CharField(max_length=8)
     country = models.CharField(max_length=25) #change for a country field later on.
-    iban = models.CharField(max_length=50)
+    account_number = models.CharField(max_length=50)
     bic = models.CharField(max_length=12, blank=True, null=True)
+    currency = models.CharField(max_length=3, default=supported_currencies)
 
     def _make_address(self):
-        return Address(address_line_1=self.al1, address_line_2=self.al2, postal_code=self.pc, country=self.country)
+        return Address(address_line_1=self.al1, address_line_2=self.al2, city=self.city, postal_code=self.pc,
+                       country=self.country)
 
     def create(self):
         # Instead of getting the NaturalUser, I can get Saver! like that I can query both Natural and Legal, when I have
@@ -447,17 +466,21 @@ class MangoBankAccount(models.Model):
         # Also because the MIDs are unique for all MP Objects. Makes it simpler, but only easier to see in hindsight!!
 
         ba = BankAccount(owner_name=(self.saver.user.first_name + '' + self.saver.user.last_name),
-                          user_id=self.saver.mid, owner_address=self._make_address(), iban=self.iban, bic=self.bic)
+                          user_id=self.saver.mid, type=self.bank_account_type, owner_address=self._make_address(),
+                         iban=self.iban, bic=self.bic)
         ba.save()
         self.bid = ba.Id
         # get other stuff from the API to add to the model?
         self.save()
 
+    def __str__(self):
+        return self.description
+
 
 class MangoPayOut(models.Model):
 
     poid = models.PositiveIntegerField(default=0)
-    creation_date = models.DateTimeField()
+    creation_date = models.DateTimeField(auto_now_add=True)
     saver = models.ForeignKey(Saver, on_delete=models.PROTECT, related_name='savermangopayout')
     dwid = models.ForeignKey(MangoWallet, on_delete=models.PROTECT, related_name='dwidmangopayout')
     amount = models.DecimalField(max_digits=8, decimal_places=2)
