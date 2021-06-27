@@ -16,10 +16,15 @@
       <!-- /.col-lg-8 -->
       <div class="col-lg-5">
         <h1 class="font-weight-light">{{ cuenta.balance }} {{ cuenta.currency }}</h1>
-        <p>{% if not cuenta.viban %} Activa tu numero personal, should be on click... link?
-          <a href="{% url 'ibanize' cuenta.id %}" class="btn btn-primary btn-sm">AQUI</a>
-            {% else %} Tu numero de cuenta: {{ cuenta.viban }}
-           {% endif %}
+        <p>
+          {% if cuenta.currency == 'EUR' %}
+            {% if not cuenta.viban %} Activa tu numero personal, should be on click... link?
+            <a href="{% url 'ibanize' cuenta.id %}" class="btn btn-primary btn-sm">AQUI</a>
+              {% else %} Tu numero de cuenta: {{ cuenta.viban }}
+             {% endif %}
+          {% else %}
+            Numeros de cuenta IBAN de momento solo se pueden crear para cuentas en EURO. Todas las demas funciones estan disponibles.
+          {% endif %}
         </p>
         <p>
             Ultima actualizacion: {{ cuenta.updated }} Should include deposits, etc.
@@ -59,8 +64,8 @@
             <h2 class="card-title">Saving Goals</h2>
             {% if goals|length <= 4 %}
             <p class="card-text">
-              <a href="{% url 'goalsavecreate' cuenta.id %}" class="btn btn-primary btn-sm">Create</a>
-              add 4 goals limit
+              <a href="{% url 'goalsavecreate' cuenta.id %}" class="btn btn-primary btn-sm">Create</a><br>
+              added 5 goals limit
             </p>
             {% endif %}
           </div>
@@ -98,7 +103,7 @@
           <div class="card-body">
             <h2 class="card-title">Deposits without registering a card</h2>
             <p class="card-text">
-              <a href="#" class="btn btn-primary btn-sm">topup</a>
+              <a href="{% url 'topupstart' cuenta.id %}" class="btn btn-primary btn-sm">Topup</a>
             </p>
           </div>
           <div class="card-footer">

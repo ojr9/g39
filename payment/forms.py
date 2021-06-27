@@ -21,5 +21,5 @@ class MangoBankAccountForm(forms.ModelForm):
 
 class TopUpStartForm(forms.Form):
     amount = forms.DecimalField(max_digits=8, decimal_places=2)
-    description = forms.CharField(min_length=15, max_length=50)
+    description = forms.CharField(min_length=15, max_length=50, initial='field not connected....yet')
     payment_method = forms.ChoiceField(choices=(('Card', 'Top up via card'), ('BW', 'Top up via Bankwire')))

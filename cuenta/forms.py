@@ -8,7 +8,7 @@ from .models import GoalSaving, Cuenta, GroupSave, LinkPayment
 class GoalSaveCreateForm(forms.ModelForm):
     class Meta:
         model = GoalSaving
-        fields = ['title', 'description', 'goal', 'monthly', 'duration', 'image', 'video']
+        fields = ['title', 'description', 'goal', 'monthly', 'duration']
 
 
 class GroupSaveCreateForm(forms.ModelForm):

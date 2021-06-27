@@ -1,17 +1,17 @@
 import datetime
 import base64
+import json
 
-from django.conf import settings
 from django.db import models
 from django.shortcuts import HttpResponse, redirect
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
 from django.contrib.auth import get_user_model
 
 from mangopay.constants import USER_TYPE_CHOICES, CARD_TYPE_CHOICES, PAYMENT_STATUS_CHOICES, LEGAL_USER_TYPE_CHOICES, \
-    TRANSACTION_TYPE_CHOICES
+    TRANSACTION_TYPE_CHOICES, SECURE_MODE_CHOICES
 from mangopay.utils import timestamp_from_datetime, timestamp_from_date, Money, Address # see if these are needed or better use django
 from mangopay.resources import NaturalUser, LegalUser, Wallet, Transfer, Card, CardRegistration, BankWirePayIn,\
-    BankingAliasIBAN, CardWebPayIn, DirectPayIn, CardWebPayIn, GooglepayPayIn, ApplepayPayIn, PreAuthorization, \
+    BankingAliasIBAN, DirectPayIn, CardWebPayIn, GooglepayPayIn, ApplepayPayIn, PreAuthorization, \
     PreAuthorizedPayIn, BankAccount, BankWirePayOut, BankWirePayInExternalInstruction, TransferRefund, PayInRefund, \
     Document, Page, Ubo, UboDeclaration
     # there are quite some resources here that I don't think I'll ever want to use, but let's start with the main ones
@@ -40,11 +40,12 @@ usr = get_user_model()
 
 def _money_format(amount):
     if isinstance(amount, float):
-        return amount * 100
+        return int(amount) * 100
     elif isinstance(amount, int):
         return amount/100
     else:
         return HttpResponse('Money amount is neither int nor float')
+    # Is the logic clear here?
 
 
 def change_make_timestamp(datetimeobject):
@@ -61,6 +62,15 @@ def _make_timestamp(data):
         return timestamp_from_date(data)
 
 
+def _from_timestamp(ts):
+    if isinstance(ts, str):
+        return datetime.datetime.fromtimestamp(int(ts), None)
+    elif isinstance(ts, int):
+        return datetime.datetime.fromtimestamp(ts, None)
+    else:
+        raise TypeError
+
+
 class MangoNaturalUser(Saver):
 
     def create(self):
@@ -71,6 +81,7 @@ class MangoNaturalUser(Saver):
         mango_call = NaturalUser(FirstName=self.user.first_name, LastName=self.user.last_name, Email=self.user.email,
                                  Birthday=db, Nationality=self.nationality,
                                  CountryOfResidence=self.country_of_residence)
+
         mango_call.save()
         self.mid = mango_call.Id
         # Add more data from the return of the call
@@ -156,6 +167,8 @@ class MangoWallet(models.Model):
         wallet_call = Wallet(Owners=[saver.mid], Description=self.cuenta.description, currency=self.cuenta.currency)
         wallet_call.save()
         self.cuenta.wid = wallet_call.Id # make sure an int is returned here.
+        print(self.cuenta.wid)
+        print(wallet_call.Id)
         self.save()
 
     def update_wallet(self):
@@ -316,7 +329,7 @@ class MangoPayIn(models.Model):
     piid = models.PositiveIntegerField(default=0)
     creation_date = models.DateTimeField()
     saver = models.ForeignKey(Saver, on_delete=models.PROTECT, related_name='%(class)s_mango_payin_author')
-    cwid = models.ForeignKey(MangoWallet, on_delete=models.PROTECT, related_name='%(class)s_mango_payin_cwid')
+    cwid = models.PositiveIntegerField(default=0)
     amount = models.DecimalField(max_digits=8, decimal_places=2)
     fees = models.DecimalField(max_digits=8, decimal_places=2)
     currency = models.CharField(max_length=3, default='EUR')
@@ -328,70 +341,62 @@ class MangoPayIn(models.Model):
     # execution_date
     nature = models.CharField(max_length=10, default='')
     transaction_type = models.CharField(max_length=10)
+    tag = models.CharField(max_length=254, blank=True, null=True)
 
     class Meta:
         ordering = ['creation_date']
 
-    def __str__(self):
-        return f'PIID - {self.piid}'
-
 
 class MangoCardWebPayIn(MangoPayIn):
-    return_url = models.URLField(blank=True, null=True) # change this to a reverse_lazy!
+    return_url = models.URLField() # this needs to change to a permanent address that has no params in the url!? no it ahs 3
     card_type = models.CharField(max_length=20, choices=CARD_TYPE_CHOICES, default='CB_VISA_MASTERCARD')
-    secure_mode = models.BooleanField(default=True)
+    secure_mode = models.CharField(max_length=9, choices=SECURE_MODE_CHOICES, default=SECURE_MODE_CHOICES['DEFAULT'])
     # money = MoneyField()
-
-    def _check_payin(self, piid):
-        # depending if the result code is  200 or not, recall method and change function
-        pass
 
     def retry(self):
         # depending on the result codes, some logic here to retry or not.
         pass
 
-    def create2(self, account, amount):
-        if not account.wid:
-            return HttpResponse('Account has no wid to use')
-
-        payin = CardWebPayIn(author=self.saver.mid, debited_funds=Money(amount=amount, currency=account.currency),
-                             fees=Money(amount=amount/100, currency=account.currency), ReturnURL=reverse('return'), # see if there is not params.
-                             CardType=self.card_type, CreditedWalletId=account.wid, Culture='EN')
-        payin.save()
-
-    def create(self, user, account):
+    def create(self, account):
         # Only CB_VISA_MC is accepted for now
-        if self.amount < 30:
-            self.secure_mode = False
-        self.author = Saver.objects.get(user=user).mid
-        self.cwid = MangoWallet.objects.get(account=account).wid
-        payin = CardWebPayIn(AuthorId=self.author.mid,
-                             DebitedFunds=Money(_money_format(self.amount), self.currency),
-                             Fees=Money(_money_format(self.fees), self.currency),
+        am = float(self.amount)
+        if am > 50.0 and not self.secure_mode == SECURE_MODE_CHOICES['DEFAULT']:
+            self.secure_mode = SECURE_MODE_CHOICES[1]
+
+        self.cwid = account.wid
+        self.fees = round(am * 0.1, 2)
+
+        am = am * 100
+        fe = self.fees*100
+        payin = CardWebPayIn(AuthorId=self.saver.mid,
+                             DebitedFunds=Money(amount=am, currency=self.currency),
+                             Fees=Money(amount=fe, currency=self.currency),
                              ReturnURL=self.return_url,
                              CardType=self.card_type,
                              CreditedWalletId=self.cwid,
                              SecureMode=self.secure_mode,
                              Culture=self.culture,
-                             StatementDescriptor=self.statement_descriptor)
-                            # check if the Money fuction works like this.
-
-        payin.save() # fires api call
+                             StatementDescriptor=self.statement_descriptor,
+                             tag=self.tag)
+        payin.save()
         self.piid = payin.Id
-        self.status = payin.status
-        self.result_code = payin.result_code
-        # make sure all the necesary params from the response of the call are here to save to the obj.
+        self.status = payin.Status
+        # self.creation_date = _from_timestamp(payin.CreationDate)
+        self.creation_date = datetime.datetime.now()
         # do I need to do something like response.json() to dump the strings and use them???
         self.save()
         if payin.RedirectURL:
-            redirect(payin.RedirectURL)
+            return payin
         return HttpResponse('redirect failed, if-condition not met')
+
+    def get_from_api(piid):
+        return CardWebPayIn.get(piid)
 
     def get_absolute_url(self):
         return reverse('return', args=[self.piid])
 
     def __str__(self):
-        raise NotImplemented
+        return f'Card Web topUp {self.piid}'
 
 
 class MangoCardDirectPayIn(MangoPayIn):
@@ -403,7 +408,7 @@ class MangoCardDirectPayIn(MangoPayIn):
     def __str__(self):
         return f'Deposit with card: {self.card} - {self.amount} on {self.creation_date}'
 
-# not good! this is not using the django fields, but the mgp fields! do I even need an address here?!
+
 # Don't think an address is needed here for the payin, it will be for the payout though.
 class MangoBankWirePayIn(MangoPayIn):
     execution_type = models.CharField(max_length=50)
@@ -412,24 +417,26 @@ class MangoBankWirePayIn(MangoPayIn):
     iban = models.CharField(max_length=50) # Need to change this to an IBAN field, same as above.
     bic = models.CharField(max_length=25)
 
-    def create(self, user, amount, fees, line1='', line2='', city='', pc='', country=''):
+    def create(self, account):
+        self.cwid = account.wid
+        self.fees = round(float(self.amount) * 0.1, 2)
 
-        mid = Saver.objects.get(user=user).mid
-        wallet = MangoWallet.objects.get(mid=mid).wid
-        bw = BankWirePayIn(AuthorId=mid, CreditedWalletId=wallet,
-                           DeclaredDebitedFunds=Money(amount, wallet.currency),
-                           DeclaredFees=Money(fees, wallet.currency))
+        am = self.amount * 100
+        fe = self.fees * 100
+        bw = BankWirePayIn(AuthorId=self.saver.mid, CreditedWalletId=account.wid,
+                           DeclaredDebitedFunds=Money(am, account.currency),
+                           DeclaredFees=Money(fe, account.currency))
         bw.save()
         self.piid = bw.Id
-        self.creation_date = bw['CreationDate']
+        # self.creation_date = bw.CreationDate
+        # self.creation_date = _from_timestamp(bw.CreationDate)
+        self.creation_date = datetime.datetime.now()
         self.status = 'CREATED'
-        self.amount = amount
-        self.fees = fees
-        self.transaction_type = bw['BANK_WIRE']
-        self.wire_reference = bw['WireReference']
-        self.wire_type = bw['Type']
-        self.iban = bw['IBAN']
-        self.bic = bw['BIC']
+        self.transaction_type = bw.BANK_WIRE
+        self.wire_reference = bw.WireReference
+        self.wire_type = bw.Type
+        self.iban = bw.IBAN
+        self.bic = bw.BIC
         self.save()
 
     def _check_status(self):
@@ -454,6 +461,7 @@ class MangoBankAccount(models.Model):
     country = models.CharField(max_length=25) #change for a country field later on.
     account_number = models.CharField(max_length=50)
     bic = models.CharField(max_length=12, blank=True, null=True)
+    iban = models.CharField(max_length=25)
     currency = models.CharField(max_length=3, default=supported_currencies)
 
     def _make_address(self):
@@ -467,7 +475,7 @@ class MangoBankAccount(models.Model):
 
         ba = BankAccount(owner_name=(self.saver.user.first_name + '' + self.saver.user.last_name),
                           user_id=self.saver.mid, type=self.bank_account_type, owner_address=self._make_address(),
-                         iban=self.iban, bic=self.bic)
+                         IBAN=self.iban, BIC=self.bic)
         ba.save()
         self.bid = ba.Id
         # get other stuff from the API to add to the model?
@@ -475,6 +483,11 @@ class MangoBankAccount(models.Model):
 
     def __str__(self):
         return self.description
+
+    def stop(self):
+        if not self.bid == 0:
+            ba = BankAccount.get(id=self.bid) # something is fishy here: needs a reference???
+            ba.deactivate()
 
 
 class MangoPayOut(models.Model):
@@ -502,7 +515,7 @@ class MangoPayOut(models.Model):
 
     def create(self):
         # mpu = Saver.objects.get(self.author)
-        ba = MangoBankAccount.objects.get(owner=mpu)
+        ba = MangoBankAccount.objects.get(owner=self.saver.mid)
         po = BankWirePayOut(author=self.saver.mid, debited_funds=Money(amount=self.amount, currency=self.currency),
                             debited_wallet=self.dwid, bank_account=ba.bid, bank_wire_ref=self.bank_wire_ref)
         po.save()

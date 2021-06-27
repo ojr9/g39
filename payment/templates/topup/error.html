@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Payment error happened{% endblock %}
+
+{% block content %}
+    <h2>An error occured with your transaction</h2>
+
+  <!-- Page Content -->
+  <div class="container">
+    No charge was made.
+
+    {{ payment.result_message }}. This is the result of the transaction attempted.
+    Please attempt again
+
+    Or buzz off.
+
+
+    code some options here, depending on the stuff.
+
+  </div>
+
+{% endblock %}

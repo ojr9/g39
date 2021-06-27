@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import CuentaCreate, CuentaDelete, CuentaView, CuentaList, GoalSavingCreate, GoalSavingDetail,\
     GoalSavingUpdate, GoalSavingAbort, deposit, PaymentLinkCreate, LinkView,\
-    PaymentLinkList, PaymentLinkListView, savetogoal, cancellink, LinkSendPreV, Payout
+    PaymentLinkList, PaymentLinkListView, savetogoal, cancellink, LinkSendPreV, Payout, GSUpdate
 from payment.views import MangoCardRegistrationView, ibanize, MangoCardPreRegistrationView
 
 # If errors happen make sure to clean up the ORDER of links
@@ -12,12 +12,14 @@ urlpatterns = [
     path('<uuid:id>/<int:goal_id>/', GoalSavingDetail.as_view(), name='goalsaveview'),
     path('<uuid:id>/<int:goal_id>/save/', savetogoal, name='savetogoal'),
     path('<uuid:id>/<int:goal_id>/update/', GoalSavingUpdate.as_view(), name='goalsaveupdate'),
+    path('<uuid:id>/<goal_id>/pupdate/', GSUpdate.as_view(), name='pupdate'),
     path('<uuid:id>/<int:goal_id>/abort/', GoalSavingAbort.as_view(), name='goalsaveabort'),
     path('<uuid:id>/close/', CuentaDelete.as_view(), name='cuentadelete'),
     path('<uuid:id>/deposit/', deposit, name='deposit'),
     path('<uuid:id>/card-register/', MangoCardPreRegistrationView.as_view(), name='cardregistration'),
     path('<uuid:id>/ibanize/', ibanize, name='ibanize'),
     path('<uuid:id>/createsavingsgoal/', GoalSavingCreate.as_view(), name='goalsavecreate'),
+    # path('<uuid:id>/gstest/', GSTest.as_view(), name='gstest'),
     path('<uuid:id>/createlink/', PaymentLinkCreate.as_view(), name='linkcreate'),
     path('<uuid:id>/accountlinks/', PaymentLinkListView.as_view(), name='linklist'),
     path('<uuid:id>/withdraw/', Payout.as_view(), name='payout'),

@@ -23,7 +23,7 @@ from django.dispatch import receiver
 from payment.models import MangoNaturalUser, MangoWallet, MangoBankAccount
 from .forms import GoalSaveCreateForm, GroupSaveCreateForm, Deposit, PaymentLinkCreateForm, \
     PaymentLinkSecCodeConfirmForm, GoalSaveSave, LinkSendEmail, WebTopUpLinkForm
-from .models import Cuenta, GoalSaving, GroupSave, Transaction, LinkPayment
+from .models import Cuenta, GoalSaving, GroupSave, Transaction, LinkPayment, Monthlies
 
 from saver.models import Saver
 from payment.models import MangoCard, MangoPayOut
@@ -126,7 +126,7 @@ class CuentaView(LoginRequiredMixin, DetailView):
             context['form'] = Deposit(user=self.request.user, currency=self.object.currency) # is this syntax right?!
 
         context['bankaccounts'] = MangoBankAccount.objects.filter(saver=saver)
-        print(context['bankaccounts'])
+        print(context['bankaccounts'], 'bankaccs')
         # context['groupsaves'] ???
         # context['crowdfunds'] ???
         return context
@@ -166,14 +166,74 @@ class GoalSavingCreate(LoginRequiredMixin, SuccessMessageMixin, CreateView):
         if len(gc) > 4:
             return super().form_invalid(form)
         form.instance.account = acc
-        # Send a check to the method check_monthly
         return super().form_valid(form)
+
+
+@receiver(post_save, sender=GoalSaving)
+def _create_monthies(sender, **kwargs):
+    goal = kwargs['instance']
+    monthlies = Monthlies.objects.filter(goal=goal)[:1]
+    if not goal.monthly == 0 and goal.duration and not monthlies:
+        goal.create_monthlies()
+
+
+def _charge_monthlies():
+    today = datetime.today()
+    monthlies = Monthlies.objects.filter(date=today)
+    for monthly in monthlies:
+        if monthly.account.balance < monthly.amount:
+            monthly.status = 'FAIL'
+        else:
+            monthly.goal.add_from_account(account=monthly.account, amount=monthly.amount)
+            monthly.status = 'CHAR'
+            Transaction.objects.create(sender_account=monthly.account, amount=monthly.amount, type='ToGoal',
+                                       description=f'Automatic saving towards your {monthly.goal.__str__}')
+
+
+class GSTest(View):
+    def get(self, request, id):
+        account = Cuenta.objects.get(id=id)
+        goal_count = GoalSaving.objects.filter(account=account)
+        if not len(goal_count) > 4:
+            return render(request, 'goals/create.html', {'form': GoalSaveCreateForm})
+        else:
+            message = messages.add_message(request, messages.ERROR, 'You can\'t have more than 4 goals at the same time')
+            return HttpResponseRedirect(reverse('cuentaview', kwargs={'id': self.kwargs['id'], 'messages': message}))
+
+    def post(self, request, id):
+        account = Cuenta.objects.get(id=id)
+        goal_count = GoalSaving.objects.filter(account=account)
+        if len(goal_count) > 4:
+            message = messages.add_message(request, messages.ERROR, 'You can\'t have more than 4 Goals at the same time')
+            return HttpResponseRedirect(reverse('cuentaview', kwargs={'id': account.id, 'messages': message}))
+        form = GoalSaveCreateForm(data=request.POST, files=request.FILES)
+        if form.is_valid():
+            form.instance.account = account
+            goal = form.save()
+            # goal.image = request.FILES['imagesssss']
+            if not goal.monthly == 0 and goal.duration:
+                goal.create_monthlies()
+            message = messages.add_message(request, messages.SUCCESS, 'Goal successfully created')
+            return HttpResponse(reverse('goalsaveview', kwargs={'id': account.id, 'messages': message,
+                                                            'goal_id': form.instance.id}))
+
+
+class GSUpdate(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
+    model = GoalSaving
+    template_name = 'goals/update.html'
+    fields = ['monthly', 'duration']
+    success_message = 'Goal successfully updated'
+    pk_url_kwarg = 'goal_id'
+
+    # def form_valid(self, form):
+    #     # so what do we do here then? do I allow monthly changes or not? Pain to allow edits...
+    #     pass
 
 
 class GoalSavingUpdate(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
     model = GoalSaving
     template_name = 'goals/update.html'
-    fields = ['title', 'description', 'monthly', 'image', 'video']
+    fields = ['title', 'description', 'image', 'video']
     success_message = 'Goal successfully updated'
     pk_url_kwarg = 'goal_id'
 #     call a function in the model to take fees if the goal is altered down.
@@ -196,6 +256,7 @@ class GoalSavingDetail(LoginRequiredMixin, DetailView):
         context = super(GoalSavingDetail, self).get_context_data()
         context['id'] = self.kwargs['id']
         context['form'] = GoalSaveSave
+        context['monthlies'] = Monthlies.objects.filter(goal=self.object)
         return context
 
 
@@ -214,7 +275,7 @@ def savetogoal(request, id, goal_id):
                                            amount=amount, type='ToGoal')
                 return HttpResponseRedirect(reverse('goalsaveview', kwargs={'id': account.id, 'goal_id': goal.id}))
             else:
-                return HttpResponse("trying to add mroe towards the goal than what is available in the account. This else is a pain in the ass")
+                return HttpResponse("trying to add more towards the goal than what is available in the account. This else is a pain in the ass")
 
 
 class PaymentLinkCreate(LoginRequiredMixin, CreateView):

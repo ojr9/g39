@@ -149,8 +149,10 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
+MEDIA_ROOT = 'static/'
+
 STATICFILES_DIRS = [
-    'static/',
+    MEDIA_ROOT,
 ]
 
 LOGIN_REDIRECT_URL = 'cuentalist'

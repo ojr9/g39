@@ -9,12 +9,17 @@
     <!-- Heading Row -->
     <div class="row align-items-center my-5">
       <div class="col-lg-7">
-        <img class="img-fluid rounded mb-4 mb-lg-0" src="{{ goal.image }}" alt="">
+        {% if goal.image %}
+          <img class="img-fluid rounded mb-4 mb-lg-0" src="{{ goal.image.url }}" alt="">
+        {% else %}
+          Edit your goal to add an image or a video.
+        {% endif %}
       </div>
       <!-- /.col-lg-8 -->
       <div class="col-lg-5">
         <h2 class="font-weight-light">{{ goal.title }}</h2>
         <p>
+          So far achieved  {{ goal.achieved }}/{{ goal.goal }}<br>
             {{ goal.description }}
         </p>
         <p>
@@ -33,6 +38,7 @@
           <div class="card-body">
             <h2 class="card-title">Add to from account</h2>
             <p class="card-text">
+              You have {{ goal.account.balance }} {{ goal.account.currency }} on your account. You can lock in an amount from it.
               <form method="post" action="save/">
                 {{ form.as_p }}
                 {% csrf_token %}
@@ -41,7 +47,7 @@
             </p>
           </div>
           <div class="card-footer">
-            You can add maximum the amount you have in the account.
+            You can add an amount from what you have in the account, additionally to your monthly topups
           </div>
         </div>
       </div>
@@ -49,12 +55,20 @@
       <div class="col-md-4 mb-5">
         <div class="card h-100">
           <div class="card-body">
-            <h2 class="card-title">Link Payments</h2>
-            <p class="card-text">Lorem ipsum ...</p>
+            <h2 class="card-title">Monthly topups</h2>
+            <p class="card-text">
+              {% if goal.monthly %}
+                Automated monthly transfer amount: {{ goal.monthly }}<br><br>
+                {% for m in monthlies %}
+                  {{ m }} <br>
+                {% endfor %}
+              {% else %}
+                No monthly topups have been activated, edit your goal for activation options.
+              {% endif %}
+            </p>
           </div>
           <div class="card-footer">
-            <a href="#" class="btn btn-primary btn-sm">Create</a>
-            <a href="#" class="btn btn-primary btn-sm">List</a>
+            <a href="{% url 'pupdate' goal.account.id goal.id %}" class="btn btn-primary btn-sm">Update monthly savings</a>
           </div>
         </div>
       </div>
@@ -62,11 +76,11 @@
       <div class="col-md-4 mb-5">
         <div class="card h-100">
           <div class="card-body">
-            <h2 class="card-title">Crowdfunds</h2>
-            <p class="card-text">Lorem ipsum dolor sit amet...</p>
+            <h2 class="card-title">Payout or abort</h2>
+            <p class="card-text">On payout date, on abort, when completed. What happpens...</p>
           </div>
           <div class="card-footer">
-            <a href="#" class="btn btn-primary btn-sm">More Info</a>
+            <a href="#" class="btn btn-primary btn-sm">Execute</a>
           </div>
         </div>
       </div>

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Cuenta, GoalSaving, GroupSave, LinkPayment, Transaction
+from .models import Cuenta, GoalSaving, GroupSave, LinkPayment, Transaction, Monthlies
 
 
 @admin.register(Cuenta)
@@ -10,6 +10,11 @@ class CuentaAdmin(admin.ModelAdmin):
 @admin.register(GoalSaving)
 class GoalSavingAdmin(admin.ModelAdmin):
     list_display = ['id', 'account', 'goal', 'achieved', 'status']
+
+
+@admin.register(Monthlies)
+class MonthliesAdmin(admin.ModelAdmin):
+    list_display = ['account', 'date', 'amount', 'status']
 
 
 @admin.register(GroupSave)

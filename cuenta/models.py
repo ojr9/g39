@@ -11,6 +11,9 @@ from mangopay.resources import BankingAliasIBAN
 # Link to SAVER or to User??? It's starting to look like Saver?!! mangousers & cards were the case
 # Actually migrate this to another app!!!
 
+
+
+
 supported_currencies = (('EUR', 'Euro'), ('USD', 'USD'), ('CHF', 'Swiss Franc'))
 statuses = (('CREA', 'CREATED'), ('PROG', 'IN PROGRESS'), ('ACCO', 'ACCOMPLISHED'), ('TERM', 'TERMINATED'))
 
@@ -51,9 +54,13 @@ class Cuenta(models.Model):
 
     def _ibanize(self, country='LU'):
         saver = Saver.objects.get(user=self.user)
-        alias = BankingAliasIBAN(WalletId=self.wid, Country=country, credited_user=saver.mid)
+        # alias = BankingAliasIBAN(WalletId=self.wid, Country=country, credited_user=saver.mid)
+        alias = BankingAliasIBAN(WalletId=self.wid, Country=country,
+                                 OwnerName=(self.user.first_name + ' ' + self.user.last_name))
         alias.save()
-        self.viban = alias['IBAN']
+        self.viban = alias.IBAN
+        if alias.BIC:
+            print(alias.BIC)
         # see in the docs if there is any other useful field for here...
         self.save()
 
@@ -69,16 +76,16 @@ class GoalSaving(models.Model):
     title = models.CharField(max_length=25)
     description = models.TextField(help_text='Add a description if you like, here', blank=True, null=True)
     goal = models.IntegerField(validators=(MinValueValidator(250, message='Minimum amount is 250.'),))
-    achieved = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
-    monthly = models.DecimalField(max_digits=8, decimal_places=2, null=True, default=0.00,
-                                  help_text='Want to add a monthly topup amount? Leave at 0 if not.')
+    achieved = models.PositiveIntegerField(default=0)
+    monthly = models.PositiveIntegerField(null=True, blank=True,
+                                          help_text='Want to add a monthly topup amount? Leave at 0 if not.')
     status = models.CharField(max_length=4, choices=statuses, default='CREA')
-    image = models.ImageField(upload_to='images/goals/', blank=True, null=True)
+    image = models.ImageField(upload_to='static/goals/images/', blank=True, null=True)
     video = models.URLField(null=True, blank=True)
-    duration = models.DurationField()
+    duration = models.PositiveSmallIntegerField(null=True, blank=True)
 
     def __str__(self):
-        return f'{self.title} - {self.account}'
+        return f'Goal: {self.title} - {self.account}'
 
     @staticmethod
     def check_monthly(goal, monthly):
@@ -101,6 +108,29 @@ class GoalSaving(models.Model):
         acc.balance -= amount
         self.save()
         acc.save()
+
+    def create_monthlies(self):
+        date = datetime.date.today()
+        for period in range(int(self.duration)):
+            date += datetime.timedelta(days=7)
+            Monthlies.objects.create(goal=self, amount=self.monthly, date=date, account=self.account, status='Waiting')
+        return
+
+
+# the idea is to in the end create it all wihtout this...?
+class Monthlies(models.Model):
+    goal = models.ForeignKey(GoalSaving, on_delete=models.CASCADE, related_name='monthlies')
+    amount = models.DecimalField(max_digits=8, decimal_places=2)
+    date = models.DateField()
+    account = models.ForeignKey(Cuenta, on_delete=models.CASCADE, related_name='accountmonthlies')
+    status = models.CharField(max_length=7, choices=(('WAIT', 'Waiting'), ('CHAR', 'Charged'), ('FAIL', 'Failed'),
+                                                     ('ABOR', 'Aborted')))
+
+    class Meta:
+        ordering = ['date']
+
+    def __str__(self):
+        return f'{self.date} - {self.amount} - {self.status}'
 
 
 class GroupSave(models.Model):
@@ -193,17 +223,17 @@ class Transaction(models.Model):
     on the API side, but the right syncro is then the main issue. How do you sync? Well at least have minimum the
     same data structure and know the ID in the APi. The alternative is a ton of API GETs...
     """
-    TYPES = (('TopUoooop', 'TopUphahah  '), ('Donation', 'Donation'), ('LinkPayment', 'LinkPayment'),
+    TYPES = (('TopUp', 'TopUp'), ('Donation', 'Donation'), ('LinkPayment', 'LinkPayment'),
              ('ToGoal', 'Added to Goal'))
 
     created = models.DateTimeField(auto_now_add=True)
-    sender = models.ForeignKey(User, on_delete=models.PROTECT, related_name='sender-user+')
+    sender = models.ForeignKey(User, on_delete=models.PROTECT, related_name='sender-user+', blank=True, null=True)
     sender_account = models.ForeignKey(Cuenta, on_delete=models.PROTECT, related_name='sender-account+', blank=True,
                                    null=True)
-    receiver = models.ForeignKey(User, on_delete=models.PROTECT, related_name='receiver-user+')
-    receiver_account = models.ForeignKey(Cuenta, on_delete=models.PROTECT, related_name='receiver-account+')
-    amount = models.DecimalField(max_digits=7, decimal_places=2,
-                                 validators=[MinValueValidator(50, message='50 is the minimum value here'), ])
+    receiver = models.ForeignKey(User, on_delete=models.PROTECT, related_name='receiver-user+', blank=True, null=True)
+    receiver_account = models.ForeignKey(Cuenta, on_delete=models.PROTECT, related_name='receiver-account+', null=True,
+                                         blank=True)
+    amount = models.DecimalField(max_digits=7, decimal_places=2)
     description = models.CharField(max_length=150, blank=True, null=True)
     type = models.CharField(max_length=11, choices=TYPES)
 

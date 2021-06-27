@@ -8,9 +8,10 @@
   <!-- Page Content -->
   <div class="container">
 
-    <form action="." method="post">
+    <form action="." method="post" enctype="multipart/form-data">
         {% csrf_token %}
         {{ form.as_p }}
+        To start monthly topups... do what?? Add a number of periods, and an amount to be saved in each of these periods.
         <input type="submit" value="Create">
     </form>
   </div>

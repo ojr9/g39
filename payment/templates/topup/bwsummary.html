@@ -7,7 +7,12 @@
 
   <!-- Page Content -->
   <div class="container">
-    {{ bwpin }} and add some more stuff here!
+    {{ bw }} and add some more stuff here!
+      Please make a deposit for {{ bw.amount }} to the acount:
+        {{ bw.iban }}, using the Reference: {{ bw.wire_reference }} - It's important, don't forget it and don't make typos.
+        That could delay the payment.
+        <br>
+        BIC: {{ bw.bic }}
 
   </div>
 
